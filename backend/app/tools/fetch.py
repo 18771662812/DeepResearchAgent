@@ -82,8 +82,8 @@ class FetchUrlTool(Tool):
         if not text.strip():
             return "未能从该页面提取到正文，可能需要 JS 渲染或有反爬，请换一个来源。"
 
-        src = self._sources.add(url, title or url)
         truncated = len(text) > self._max_chars
         body = text[: self._max_chars]
+        src = self._sources.add(url, title or url, content=body)
         suffix = f"\n\n（正文过长，已截断，原文共 {len(text)} 字）" if truncated else ""
         return f"[{src.id}] {src.title}\nURL: {url}\n\n{body}{suffix}"

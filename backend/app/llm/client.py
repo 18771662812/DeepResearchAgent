@@ -64,15 +64,22 @@ class LLMResponse:
 
 
 class LLMClient:
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
+    ):
+        """model / reasoning_effort 不传时使用配置中的默认值（评测裁判会传入更强的模型）。"""
         self._api_key = settings.deepseek_api_key
         self._client = AsyncOpenAI(
             api_key=settings.deepseek_api_key or "not-configured",
             base_url=settings.deepseek_base_url,
             timeout=settings.llm_timeout,
         )
-        self.model = settings.llm_model
-        self.reasoning_effort = settings.llm_reasoning_effort
+        self.model = model or settings.llm_model
+        self.reasoning_effort = reasoning_effort or settings.llm_reasoning_effort
 
     def _thinking_params(self) -> dict[str, Any]:
         if self.reasoning_effort == "none":

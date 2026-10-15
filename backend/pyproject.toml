@@ -33,3 +33,4 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # 提示词是给模型看的文本，不按代码行宽强制换行
 "app/agent/prompts.py" = ["E501"]
+"eval/prompts.py" = ["E501"]

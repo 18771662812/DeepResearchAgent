@@ -47,7 +47,7 @@ class SingleAgent:
         await emit(
             AgentEvent(
                 type="report",
-                data={"markdown": report, "sources": [asdict(s) for s in cited]},
+                data={"markdown": report, "sources": [s.public() for s in cited]},
             )
         )
         await emit(

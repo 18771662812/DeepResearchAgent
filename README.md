@@ -107,6 +107,36 @@ uv run pytest        # 使用假的 LLM 和工具，不消耗 API 额度
 uv run ruff check .
 ```
 
+## 评测
+
+`backend/eval/` 是一套离线评测流水线，用来回答"多 Agent 多花的钱值不值"，也用来验证后续每次改动是变好还是变坏。
+
+### 方法
+
+| 维度 | 做法 |
+|---|---|
+| 题集 | 10 道自建题目，覆盖技术、行业、科学、政策；每题附 5~7 条**参考要点**（描述应覆盖的方面而非具体数字，避免答案过期） |
+| 报告质量 | LLM-as-Judge 按全面性、深度、切题性、可读性打 1~10 分，并逐条判断参考要点 covered / partial / missing |
+| 两两对比 | 同一问题的单 / 多 Agent 报告交给裁判比较，**交换 A/B 顺序各判一次**，两次结论不一致记为平局，抵消位置偏差 |
+| 引用准确率 | 每篇报告随机抽 10 条带引用的陈述，让裁判对照 **Agent 当时实际读到的来源内容**判断 supported / partial / unsupported；同时统计引用了不存在编号的"编造引用" |
+| 效率 | 耗时、LLM 调用次数、tokens、成本、搜索失败率 |
+
+几个细节：
+- **裁判用更强的 `deepseek-v4-pro`**，与被评测的 `deepseek-flash` 区分开，减轻自我偏好。
+- **核查引用时只给相关片段**：来源正文最长 8000 字，直接截取前 3000 字会漏掉后文的证据。改为按重叠窗口切分、用字符二元组重合度挑选与陈述最相关的片段。在同一批 20 条陈述上，这一改动把测得的引用准确率从 65% / 70% 修正到 85% / 95%，原先的低分是评测方法本身的偏差。
+- 研究在进程内直接调用 Agent（不走 HTTP），这样能拿到每个来源的完整内容；每条研究结果单独存盘，`--rejudge` 可以只重跑评判、不重跑研究。
+
+### 运行
+
+```bash
+cd backend
+uv run python -m eval.run                                  # 全部题目 × 单 / 多 Agent
+uv run python -m eval.run --questions tech-mcp --modes multi
+uv run python -m eval.run --rejudge eval/results/<目录>     # 复用研究结果，只重新评判
+```
+
+结果写入 `backend/eval/results/<时间戳>/`：`summary.md`（汇总报告）、`summary.json`、`runs/*.json`（每次研究的报告、来源、评分明细）。全量跑一次约 25 分钟、$1.5。
+
 ## API
 
 | 方法 | 路径 | 说明 |
@@ -136,11 +166,20 @@ backend/
       sources.py            # 来源登记与引用解析
       events.py             # 事件模型
       factory.py            # 按模式组装 Agent
-    llm/client.py           # DeepSeek 客户端、JSON 输出、token 用量统计
+    llm/
+      client.py             # DeepSeek 客户端、token 用量统计
+      structured.py         # JSON 输出 + Pydantic 校验 + 失败重试
     tools/
       base.py               # Tool 抽象 + ToolRegistry
       search.py             # 搜索 Provider（ddgs / Tavily / 博查）
       fetch.py              # 网页抓取与正文提取
+  eval/
+    datasets/questions.jsonl# 评测题集（问题 + 参考要点）
+    run.py                  # 评测入口（命令行）
+    runner.py               # 运行研究、收集指标、调度评判
+    judges.py               # LLM 裁判：质量打分 / 引用核查 / 两两对比
+    citations.py            # 陈述抽取、相关片段选取
+    report.py               # 汇总统计与 Markdown 报告
   tests/                    # 单元测试 + 接口测试
 frontend/
   src/

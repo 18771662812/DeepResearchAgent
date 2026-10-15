@@ -16,3 +16,6 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+# Eval
+backend/eval/results/

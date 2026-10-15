@@ -12,9 +12,9 @@ import logging
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import date
-from typing import Any, TypeVar
+from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 from app.agent.events import AgentEvent, EmitFn
 from app.agent.loop import ChatModel, run_tool_loop
@@ -27,11 +27,10 @@ from app.agent.prompts import (
 )
 from app.agent.sources import SourceRegistry
 from app.llm import Usage
+from app.llm.structured import StructuredOutputError, chat_json
 from app.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T", bound=BaseModel)
 
 
 # ---- LLM 结构化输出 ----
@@ -148,7 +147,7 @@ class MultiAgent:
         await emit(
             AgentEvent(
                 type="report",
-                data={"markdown": report, "sources": [asdict(s) for s in cited]},
+                data={"markdown": report, "sources": [s.public() for s in cited]},
             )
         )
         await emit(AgentEvent(type="usage", data=self._usage_summary()))
@@ -167,8 +166,10 @@ class MultiAgent:
             {"role": "user", "content": query},
         ]
         try:
-            plan = await self._chat_json(messages, PlanOutput, role="planner")
-        except ValueError:
+            plan = await chat_json(
+                self.llm, messages, PlanOutput, name="planner", usage=self._usage["planner"]
+            )
+        except StructuredOutputError:
             # 规划失败时退化为把原问题当作唯一的子问题，保证流程能继续
             await emit(AgentEvent(type="status", data={"message": "规划失败，直接研究原问题"}))
             return PlanOutput(sub_questions=[SubQuestionSpec(question=query)])
@@ -244,8 +245,14 @@ class MultiAgent:
             },
         ]
         try:
-            return await self._chat_json(messages, ReflectionOutput, role="reflector")
-        except ValueError:
+            return await chat_json(
+                self.llm,
+                messages,
+                ReflectionOutput,
+                name="reflector",
+                usage=self._usage["reflector"],
+            )
+        except StructuredOutputError:
             return ReflectionOutput(sufficient=True)
 
     async def _write(self, query: str, brief: str) -> str:
@@ -262,22 +269,6 @@ class MultiAgent:
         return resp.content
 
     # ---- 工具方法 ----
-
-    async def _chat_json(self, messages: list[dict[str, Any]], model: type[T], role: str) -> T:
-        """要求模型输出 JSON 并校验；不合法时把错误反馈给模型重试一次。"""
-        for _ in range(2):
-            resp = await self.llm.chat(messages, json_mode=True, name=role)
-            self._usage[role].add(resp.usage)
-            try:
-                return model.model_validate_json(resp.content)
-            except ValidationError as e:
-                logger.warning("%s returned invalid JSON: %s", role, e)
-                messages = [
-                    *messages,
-                    {"role": "assistant", "content": resp.content},
-                    {"role": "user", "content": f"输出不符合要求：{e}\n请只输出符合格式的 JSON。"},
-                ]
-        raise ValueError(f"{role} 未能输出合法的 JSON")
 
     def _new_sub_question(self, spec: SubQuestionSpec, round_no: int) -> SubQuestion:
         q = SubQuestion(id=self._next_id, question=spec.question, goal=spec.goal, round=round_no)

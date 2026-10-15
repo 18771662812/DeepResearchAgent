@@ -1,0 +1,10 @@
+{"id": "tech-mcp", "category": "技术", "question": "MCP（Model Context Protocol）协议是什么？有哪些主流实现和应用场景？", "key_points": ["提出方与发布时间（Anthropic，2024 年 11 月）", "架构角色：Host / Client / Server", "核心原语：Tools、Resources、Prompts", "传输方式：stdio 与基于 HTTP 的传输", "主流 SDK、客户端或服务器实现", "典型应用场景", "安全风险或局限"]}
+{"id": "tech-rust-go", "category": "技术", "question": "对比 Rust 和 Go 在后端开发中的优劣，分别适合什么场景？", "key_points": ["性能与资源占用对比", "并发模型差异（goroutine 与 async/所有权）", "内存安全机制（所有权与借用 vs 垃圾回收）", "学习曲线与开发效率", "生态与典型应用案例", "具体的选型建议"]}
+{"id": "tech-vector-db", "category": "技术", "question": "主流向量数据库（如 Milvus、Qdrant、Weaviate、pgvector）各有什么特点？应该如何选型？", "key_points": ["各产品的架构与部署方式", "支持的索引算法（如 HNSW、IVF）", "性能与规模化能力", "生态与集成（如与 PostgreSQL、LangChain 的集成）", "按场景给出的选型建议"]}
+{"id": "tech-rag", "category": "技术", "question": "RAG（检索增强生成）系统有哪些常见的优化方法？", "key_points": ["文档切分策略", "检索优化（混合检索、重排序等）", "查询改写或扩展", "上下文压缩或高级范式（如 GraphRAG、Agentic RAG）", "评测方法与指标"]}
+{"id": "biz-nev-export", "category": "行业", "question": "2026 年中国新能源汽车出口情况如何？主要出口市场、代表企业和面临的贸易壁垒分别是什么？", "key_points": ["出口规模与增速数据", "主要出口市场或区域分布", "代表企业及其出口表现", "贸易壁垒（如欧盟反补贴税等）", "企业的应对策略（如海外建厂）"]}
+{"id": "biz-llm-price", "category": "行业", "question": "国内大模型 API 价格战的情况如何？对行业有什么影响？", "key_points": ["主要厂商及价格水平", "降价的关键事件与时间线", "降价的原因（技术进步、成本、竞争）", "对开发者和应用生态的影响", "价格战的可持续性或风险"]}
+{"id": "biz-humanoid", "category": "行业", "question": "人形机器人行业目前的发展现状如何？主要玩家和商业化进展有哪些？", "key_points": ["行业发展阶段与市场规模", "国内外主要企业", "核心技术与关键零部件", "商业化落地场景与进展", "面临的挑战"]}
+{"id": "sci-glp1", "category": "科学", "question": "GLP-1 类减重药物的作用机制、代表药物和主要副作用是什么？", "key_points": ["作用机制", "代表药物（如司美格鲁肽、替尔泊肽）", "减重效果数据", "常见副作用与风险", "市场情况或可及性"]}
+{"id": "policy-ai-act", "category": "政策", "question": "欧盟《人工智能法案》（AI Act）的核心内容是什么？对中国企业有什么影响？", "key_points": ["基于风险的分级框架", "禁止类与高风险类 AI 的要求", "通用 AI 模型（GPAI）的义务", "实施时间表与罚则", "对中国企业的影响或合规建议"]}
+{"id": "sci-solid-battery", "category": "科学", "question": "固态电池目前的技术进展和产业化时间表是怎样的？", "key_points": ["主要技术路线（硫化物、氧化物、聚合物等）", "相对液态锂电池的优势与技术难点", "主要企业进展", "量产时间表", "成本与产业化挑战"]}
