@@ -119,8 +119,9 @@ textarea {
   padding: 6px 18px;
   border: none;
   border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--accent-on);
+  font-weight: 500;
 }
 .submit:disabled {
   opacity: 0.5;

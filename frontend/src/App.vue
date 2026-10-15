@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { createResearch, listResearch, subscribeEvents } from './api/research'
+import CollapsiblePanel from './components/CollapsiblePanel.vue'
 import EventTimeline from './components/EventTimeline.vue'
 import PlanBoard from './components/PlanBoard.vue'
 import ReportView from './components/ReportView.vue'
@@ -34,6 +35,23 @@ const report = computed(() => {
   return e ? (e.data as { markdown: string; sources: Source[] }) : null
 })
 const hasPlan = computed(() => events.value.some((e) => e.type === 'plan'))
+
+// 侧栏两张卡片默认收起；都收起时侧栏缩成竖排标签，报告区铺满
+const planOpen = ref(false)
+const timelineOpen = ref(false)
+const sideCollapsed = computed(() => !(hasPlan.value && planOpen.value) && !timelineOpen.value)
+
+const planBadge = computed(() => {
+  let total = 0
+  let done = 0
+  for (const e of events.value) {
+    if (e.type === 'plan') total += e.data.sub_questions.length
+    else if (e.type === 'reflection') total += e.data.follow_up_questions.length
+    else if (e.type === 'researcher_done') done += 1
+  }
+  return total ? `${done}/${total}` : undefined
+})
+const toolCallCount = computed(() => events.value.filter((e) => e.type === 'tool_call').length)
 
 async function refreshTasks() {
   try {
@@ -127,14 +145,34 @@ onUnmounted(() => unsubscribe?.())
           <span class="badge" :class="status">{{ STATUS_TEXT[status] }}</span>
           <span class="badge">{{ MODE_TEXT[currentMode] }}</span>
         </header>
-        <div class="workspace">
+        <div class="workspace" :class="{ collapsed: sideCollapsed }">
           <div class="side">
-            <PlanBoard v-if="hasPlan" :events="events" :finished="!running" />
-            <EventTimeline :events="events" :running="running" />
+            <CollapsiblePanel
+              v-if="hasPlan"
+              v-model:open="planOpen"
+              title="研究计划"
+              :rail="sideCollapsed"
+              :badge="planBadge"
+            >
+              <PlanBoard :events="events" :finished="!running" />
+            </CollapsiblePanel>
+            <CollapsiblePanel
+              v-model:open="timelineOpen"
+              title="研究过程"
+              :rail="sideCollapsed"
+              :active="running"
+              :badge="toolCallCount ? String(toolCallCount) : undefined"
+            >
+              <EventTimeline :events="events" />
+            </CollapsiblePanel>
           </div>
           <ReportView v-if="report" :markdown="report.markdown" :sources="report.sources" />
           <div v-else class="panel placeholder">
-            {{ running ? '研究进行中，报告生成后会显示在这里…' : '本次研究没有生成报告' }}
+            <template v-if="running">
+              研究进行中，报告生成后会显示在这里。<br />
+              可以展开左侧的「研究计划」「研究过程」查看实时进展。
+            </template>
+            <template v-else>本次研究没有生成报告</template>
           </div>
         </div>
       </template>
@@ -240,15 +278,23 @@ onUnmounted(() => unsubscribe?.())
 }
 .workspace {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 380px minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+  transition: grid-template-columns 0.25s ease;
+}
+.workspace.collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
 }
 .side {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 .placeholder {
   padding: 48px;
@@ -259,8 +305,14 @@ onUnmounted(() => unsubscribe?.())
   color: var(--danger);
 }
 @media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: 1fr;
+  .workspace,
+  .workspace.collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
   .workspace :deep(.timeline) {
     max-height: 360px;

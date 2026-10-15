@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { AgentEvent } from '../types'
 
-const props = defineProps<{ events: AgentEvent[]; running: boolean }>()
+const props = defineProps<{ events: AgentEvent[] }>()
 
 interface Item {
   kind: 'divider' | 'line'
@@ -102,61 +102,30 @@ watch(
 </script>
 
 <template>
-  <section class="timeline panel">
-    <div class="title">
-      研究过程
-      <span v-if="running" class="pulse" />
-    </div>
-    <ol ref="listEl" class="list">
-      <li v-for="(item, i) in items" :key="i" :class="[item.kind, item.tone]">
-        <template v-if="item.kind === 'divider'">{{ item.text }}</template>
-        <template v-else>
-          <span v-if="item.agent" class="agent">{{ item.agent }}</span>
-          <span class="tag">{{ item.tag }}</span>
-          <div class="body">
-            <div class="text">{{ item.text }}</div>
-            <details v-if="item.detail">
-              <summary>预览</summary>
-              <pre>{{ item.detail }}</pre>
-            </details>
-          </div>
-        </template>
-      </li>
-    </ol>
-  </section>
+  <ol ref="listEl" class="timeline">
+    <li v-for="(item, i) in items" :key="i" :class="[item.kind, item.tone]">
+      <template v-if="item.kind === 'divider'">{{ item.text }}</template>
+      <template v-else>
+        <span v-if="item.agent" class="agent">{{ item.agent }}</span>
+        <span class="tag">{{ item.tag }}</span>
+        <div class="body">
+          <div class="text">{{ item.text }}</div>
+          <details v-if="item.detail">
+            <summary>预览</summary>
+            <pre>{{ item.detail }}</pre>
+          </details>
+        </div>
+      </template>
+    </li>
+  </ol>
 </template>
 
 <style scoped>
 .timeline {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 70vh;
-}
-.title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  font-weight: 600;
-}
-.pulse {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.25;
-  }
-}
-.list {
   list-style: none;
   margin: 0;
   padding: 8px 16px 16px;
+  max-height: 60vh;
   overflow-y: auto;
   font-size: 13px;
 }

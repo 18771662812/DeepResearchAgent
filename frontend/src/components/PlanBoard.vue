@@ -103,9 +103,7 @@ function reflectionAfter(round: number) {
 </script>
 
 <template>
-  <section class="plan panel">
-    <div class="title">研究计划</div>
-
+  <section class="plan">
     <ol class="phases">
       <li v-for="p in PHASES" :key="p.key" :class="phaseState(p.key)">{{ p.label }}</li>
     </ol>
@@ -153,12 +151,6 @@ function reflectionAfter(round: number) {
   padding-bottom: 12px;
   font-size: 13px;
 }
-.title {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
-  font-weight: 600;
-}
 .phases {
   display: flex;
   list-style: none;
@@ -176,8 +168,9 @@ function reflectionAfter(round: number) {
   font-size: 12px;
 }
 .phases li.active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--accent-on);
+  font-weight: 500;
 }
 .phases li.done {
   background: var(--accent-soft);
