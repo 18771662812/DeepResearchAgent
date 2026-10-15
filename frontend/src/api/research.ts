@@ -1,4 +1,4 @@
-import type { AgentEvent, TaskDetail, TaskSummary } from '../types'
+import type { AgentEvent, AgentMode, TaskDetail, TaskSummary } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -13,10 +13,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export function createResearch(query: string) {
+export function createResearch(query: string, mode: AgentMode) {
   return request<{ task_id: string }>('/api/research', {
     method: 'POST',
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, mode }),
   })
 }
 

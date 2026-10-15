@@ -19,9 +19,15 @@ def parse_sse(body: str) -> list[tuple[str, dict]]:
 
 def test_create_and_stream_research():
     with TestClient(app) as client:
-        app.state.task_manager = TaskManager(StepAgent)
+        modes: list[str] = []
 
-        resp = client.post("/api/research", json={"query": "测试问题"})
+        def factory(mode):
+            modes.append(mode)
+            return StepAgent()
+
+        app.state.task_manager = TaskManager(factory)
+
+        resp = client.post("/api/research", json={"query": "测试问题", "mode": "single"})
         assert resp.status_code == 201
         task_id = resp.json()["task_id"]
 
@@ -40,7 +46,12 @@ def test_create_and_stream_research():
 
         detail = client.get(f"/api/research/{task_id}").json()
         assert detail["status"] == "completed" and detail["report"] == "ok"
+        assert detail["mode"] == "single" and modes == ["single"]
         assert client.get("/api/research").json()[0]["id"] == task_id
+
+        # 不指定模式时使用服务端默认配置
+        resp = client.post("/api/research", json={"query": "另一个问题"})
+        assert client.get(f"/api/research/{resp.json()['task_id']}").json()["mode"] == "multi"
 
 
 def test_unknown_task_returns_404():
@@ -51,3 +62,5 @@ def test_unknown_task_returns_404():
 def test_validation():
     with TestClient(app) as client:
         assert client.post("/api/research", json={"query": ""}).status_code == 422
+        resp = client.post("/api/research", json={"query": "问题", "mode": "nope"})
+        assert resp.status_code == 422

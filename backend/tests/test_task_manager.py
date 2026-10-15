@@ -1,7 +1,6 @@
 import asyncio
 
-from app.agent.events import AgentEvent
-from app.agent.research_agent import EmitFn
+from app.agent.events import AgentEvent, EmitFn
 from app.services.task_manager import TaskManager
 
 
@@ -27,7 +26,7 @@ async def collect(manager: TaskManager, task_id: str, start: int = 0) -> list[Ag
 
 def test_stream_receives_all_events_and_ends_with_done():
     async def main():
-        manager = TaskManager(StepAgent)
+        manager = TaskManager(lambda mode: StepAgent())
         task = manager.create("q")
         events = await collect(manager, task.id)
         # 结束后订阅，从中间序号开始回放（模拟断线重连）
@@ -42,7 +41,7 @@ def test_stream_receives_all_events_and_ends_with_done():
 
 def test_failure_is_reported_as_error_event():
     async def main():
-        manager = TaskManager(FailingAgent)
+        manager = TaskManager(lambda mode: FailingAgent())
         task = manager.create("q")
         return task, await collect(manager, task.id)
 

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agent.factory import build_research_agent
+from app.agent.factory import build_agent
 from app.api import research
 from app.config import get_settings
 from app.services.task_manager import TaskManager
@@ -19,7 +19,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.task_manager = TaskManager(lambda: build_research_agent(settings))
+    app.state.task_manager = TaskManager(lambda mode: build_agent(settings, mode))
     yield
     await app.state.task_manager.shutdown()
 
@@ -38,4 +38,9 @@ app.include_router(research.router)
 
 @app.get("/api/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "model": settings.llm_model, "search": settings.search_provider}
+    return {
+        "status": "ok",
+        "model": settings.llm_model,
+        "search": settings.search_provider,
+        "default_mode": settings.agent_mode,
+    }

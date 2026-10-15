@@ -14,8 +14,8 @@ from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-from app.agent.events import AgentEvent
-from app.agent.research_agent import EmitFn
+from app.agent.events import AgentEvent, EmitFn
+from app.config import AgentMode
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class Agent(Protocol):
 class ResearchTask:
     id: str
     query: str
+    mode: AgentMode = "multi"
     status: TaskStatus = "pending"
     created_at: float = field(default_factory=time.time)
     report: str | None = None
@@ -80,14 +81,14 @@ class ResearchTask:
 
 
 class TaskManager:
-    def __init__(self, agent_factory: Callable[[], Agent]):
+    def __init__(self, agent_factory: Callable[[AgentMode], Agent]):
         self._agent_factory = agent_factory
         self._tasks: dict[str, ResearchTask] = {}
         # 持有后台任务的强引用，防止被 GC 回收
         self._running: set[asyncio.Task[None]] = set()
 
-    def create(self, query: str) -> ResearchTask:
-        task = ResearchTask(id=uuid.uuid4().hex[:12], query=query)
+    def create(self, query: str, mode: AgentMode = "multi") -> ResearchTask:
+        task = ResearchTask(id=uuid.uuid4().hex[:12], query=query, mode=mode)
         self._tasks[task.id] = task
         bg = asyncio.create_task(self._run(task))
         self._running.add(bg)
@@ -111,7 +112,7 @@ class TaskManager:
             await task.emit(event)
 
         try:
-            agent = self._agent_factory()
+            agent = self._agent_factory(task.mode)
             await agent.run(task.query, emit)
         except Exception as e:
             logger.exception("research task %s failed", task.id)

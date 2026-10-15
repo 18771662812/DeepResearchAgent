@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, Field
 
+from app.config import AgentMode, get_settings
 from app.services.task_manager import ResearchTask, TaskManager, TaskStatus
 
 router = APIRouter(prefix="/api/research", tags=["research"])
@@ -12,6 +13,8 @@ router = APIRouter(prefix="/api/research", tags=["research"])
 
 class CreateResearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=2000)
+    # multi：多 Agent 深度研究；single：单 Agent 快速研究；不填使用服务端默认配置
+    mode: AgentMode | None = None
 
 
 class CreateResearchResponse(BaseModel):
@@ -21,6 +24,7 @@ class CreateResearchResponse(BaseModel):
 class TaskSummary(BaseModel):
     id: str
     query: str
+    mode: AgentMode
     status: TaskStatus
     created_at: float
     error: str | None = None
@@ -53,6 +57,7 @@ def _summary(task: ResearchTask) -> TaskSummary:
     return TaskSummary(
         id=task.id,
         query=task.query,
+        mode=task.mode,
         status=task.status,
         created_at=task.created_at,
         error=task.error,
@@ -61,7 +66,7 @@ def _summary(task: ResearchTask) -> TaskSummary:
 
 @router.post("", status_code=201)
 async def create_research(body: CreateResearchRequest, manager: Manager) -> CreateResearchResponse:
-    task = manager.create(body.query.strip())
+    task = manager.create(body.query.strip(), body.mode or get_settings().agent_mode)
     return CreateResearchResponse(task_id=task.id)
 
 

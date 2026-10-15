@@ -3,6 +3,8 @@
 只封装 Agent 需要的最小能力：带工具的一次对话调用，并统一 token 用量的统计口径。
 """
 
+import logging
+import time
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
@@ -10,6 +12,8 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,14 +83,25 @@ class LLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
+        *,
+        json_mode: bool = False,
+        name: str = "llm",
     ) -> LLMResponse:
+        """调用一次模型。
+
+        json_mode: 要求模型输出 JSON 对象（提示词中必须出现 "JSON" 字样）。
+        name: 调用方角色（planner / researcher / ...），用于日志和后续的链路追踪。
+        """
         if not self._api_key:
             raise RuntimeError("未配置 DEEPSEEK_API_KEY，请在 backend/.env 中填写")
 
         kwargs: dict[str, Any] = {}
         if tools:
             kwargs["tools"] = tools
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
 
+        started = time.perf_counter()
         resp = await self._client.chat.completions.create(
             model=self.model,
             messages=messages,  # type: ignore[arg-type]
@@ -106,6 +121,15 @@ class LLMClient:
             usage.prompt_tokens = resp.usage.prompt_tokens
             usage.completion_tokens = resp.usage.completion_tokens
             usage.cache_hit_tokens = getattr(resp.usage, "prompt_cache_hit_tokens", 0) or 0
+        logger.info(
+            "llm[%s] %.1fs prompt=%d (cache %d) completion=%d tool_calls=%d",
+            name,
+            time.perf_counter() - started,
+            usage.prompt_tokens,
+            usage.cache_hit_tokens,
+            usage.completion_tokens,
+            len(tool_calls),
+        )
 
         return LLMResponse(
             content=msg.content or "",

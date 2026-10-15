@@ -1,7 +1,7 @@
 import asyncio
 
 from app.agent.events import AgentEvent
-from app.agent.research_agent import ResearchAgent
+from app.agent.single_agent import SingleAgent
 from app.agent.sources import SourceRegistry
 from app.tools import ToolRegistry
 from tests.fakes import FakeSearchTool, ScriptedLLM, final_response, tool_call_response
@@ -9,7 +9,7 @@ from tests.fakes import FakeSearchTool, ScriptedLLM, final_response, tool_call_r
 
 def run_agent(llm: ScriptedLLM, max_steps: int = 5) -> tuple[str, list[AgentEvent]]:
     sources = SourceRegistry()
-    agent = ResearchAgent(llm, ToolRegistry([FakeSearchTool(sources)]), sources, max_steps)
+    agent = SingleAgent(llm, ToolRegistry([FakeSearchTool(sources)]), sources, max_steps)
     events: list[AgentEvent] = []
 
     async def emit(e: AgentEvent) -> None:

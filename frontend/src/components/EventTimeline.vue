@@ -6,17 +6,52 @@ const props = defineProps<{ events: AgentEvent[]; running: boolean }>()
 
 interface Item {
   kind: 'divider' | 'line'
+  agent?: string | null
   tag?: string
   text: string
   detail?: string
   tone?: 'error' | 'muted'
 }
 
+const PHASE_TEXT: Record<string, string> = {
+  planning: '规划',
+  researching: '研究',
+  reflecting: '反思',
+  writing: '撰写报告',
+}
+
 function describe(e: AgentEvent): Item | null {
   const d = e.data
   switch (e.type) {
     case 'step':
-      return { kind: 'divider', text: `第 ${d.step} 轮` }
+      // 多 Agent 模式下各 Researcher 的轮次交错出现，不再画分隔线
+      return e.agent ? null : { kind: 'divider', text: `第 ${d.step} 轮` }
+    case 'phase':
+      return {
+        kind: 'divider',
+        text: PHASE_TEXT[d.phase] + (d.round && d.phase === 'researching' ? ` · 第 ${d.round} 轮` : ''),
+      }
+    case 'plan':
+      return { kind: 'line', tag: '规划', text: `拆解为 ${d.sub_questions.length} 个子问题` }
+    case 'researcher_start':
+      return { kind: 'line', tag: '开始', text: d.question }
+    case 'researcher_done':
+      return d.ok
+        ? {
+            kind: 'line',
+            tag: '笔记',
+            text: `提交研究笔记 ${d.note_chars} 字（原始资料 ${d.raw_chars} 字）`,
+          }
+        : { kind: 'line', tag: '失败', text: d.error, tone: 'error' }
+    case 'reflection':
+      return {
+        kind: 'line',
+        tag: '反思',
+        text: d.sufficient
+          ? '信息已充分'
+          : `发现 ${d.gaps.length} 个缺口，补充 ${d.follow_up_questions.length} 个子问题`,
+        detail: d.gaps.length ? d.gaps.join('\n') : undefined,
+      }
     case 'status':
       return { kind: 'line', tag: '状态', text: d.message, tone: 'muted' }
     case 'thought':
@@ -35,13 +70,13 @@ function describe(e: AgentEvent): Item | null {
       }
     case 'report':
       return { kind: 'line', tag: '完成', text: `报告已生成，引用 ${d.sources.length} 个来源` }
-    case 'usage':
-      return {
-        kind: 'line',
-        tag: '用量',
-        text: `LLM 调用 ${d.calls} 次 · 输入 ${d.prompt_tokens} · 输出 ${d.completion_tokens} · 缓存命中 ${d.cache_hit_tokens} tokens`,
-        tone: 'muted',
+    case 'usage': {
+      let text = `LLM 调用 ${d.calls} 次 · 输入 ${d.prompt_tokens} · 输出 ${d.completion_tokens} · 缓存命中 ${d.cache_hit_tokens} tokens`
+      if (d.context?.notes_chars) {
+        text += ` · 上下文压缩 ${d.context.raw_chars} → ${d.context.notes_chars} 字`
       }
+      return { kind: 'line', tag: '用量', text, tone: 'muted' }
+    }
     case 'error':
       return { kind: 'line', tag: '错误', text: d.message, tone: 'error' }
     default:
@@ -49,7 +84,12 @@ function describe(e: AgentEvent): Item | null {
   }
 }
 
-const items = computed(() => props.events.map(describe).filter((i): i is Item => i !== null))
+const items = computed<Item[]>(() =>
+  props.events.flatMap((e) => {
+    const item = describe(e)
+    return item ? [{ ...item, agent: e.agent }] : []
+  }),
+)
 
 const listEl = ref<HTMLElement | null>(null)
 watch(
@@ -71,6 +111,7 @@ watch(
       <li v-for="(item, i) in items" :key="i" :class="[item.kind, item.tone]">
         <template v-if="item.kind === 'divider'">{{ item.text }}</template>
         <template v-else>
+          <span v-if="item.agent" class="agent">{{ item.agent }}</span>
           <span class="tag">{{ item.tag }}</span>
           <div class="body">
             <div class="text">{{ item.text }}</div>
@@ -90,9 +131,7 @@ watch(
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(100vh - 140px);
-  position: sticky;
-  top: 24px;
+  max-height: 70vh;
 }
 .title {
   display: flex;
@@ -131,6 +170,17 @@ watch(
   display: flex;
   gap: 8px;
   padding: 4px 0;
+}
+.agent {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 20px;
+  height: 20px;
+  font-variant-numeric: tabular-nums;
 }
 .tag {
   flex-shrink: 0;

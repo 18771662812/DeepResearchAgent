@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
+AgentMode = Literal["multi", "single"]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -31,9 +33,17 @@ class Settings(BaseSettings):
     ddgs_proxy: str = ""
 
     # Agent
-    agent_max_steps: int = 10
+    agent_mode: AgentMode = "multi"  # 请求未指定模式时的默认值
     fetch_max_chars: int = 8000
     tool_timeout: float = 60.0
+    # 单 Agent 模式
+    agent_max_steps: int = 10
+    # 多 Agent 模式
+    planner_max_sub_questions: int = 4
+    researcher_max_steps: int = 5
+    researcher_concurrency: int = 3
+    research_max_rounds: int = 2
+    reflector_max_follow_ups: int = 2
 
     # Server
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
