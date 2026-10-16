@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     research_max_rounds: int = 2
     reflector_max_follow_ups: int = 2
 
+    # 存储：默认是 backend/data 下的 SQLite 文件；换 Postgres 时改成 postgresql+asyncpg://...
+    database_url: str = f"sqlite+aiosqlite:///{(BACKEND_DIR / 'data' / 'research.db').as_posix()}"
+
     # Server
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 

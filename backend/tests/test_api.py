@@ -25,7 +25,7 @@ def test_create_and_stream_research():
             modes.append(mode)
             return StepAgent()
 
-        app.state.task_manager = TaskManager(factory)
+        app.state.task_manager = TaskManager(factory, app.state.store)
 
         resp = client.post("/api/research", json={"query": "测试问题", "mode": "single"})
         assert resp.status_code == 201

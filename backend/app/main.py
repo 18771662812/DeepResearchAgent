@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.agent.factory import build_agent
 from app.api import research
 from app.config import get_settings
+from app.services.store import TaskStore
 from app.services.task_manager import TaskManager
 
 logging.basicConfig(
@@ -19,9 +20,13 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.task_manager = TaskManager(lambda mode: build_agent(settings, mode))
+    store = TaskStore(settings.database_url)
+    await store.init()
+    app.state.store = store
+    app.state.task_manager = TaskManager(lambda mode: build_agent(settings, mode), store)
     yield
     await app.state.task_manager.shutdown()
+    await store.close()
 
 
 app = FastAPI(title="DeepResearchAgent", version="0.1.0", lifespan=lifespan)

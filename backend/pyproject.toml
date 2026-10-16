@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "Deep research agent with a hand-written tool-use loop, SSE streaming and DeepSeek."
 requires-python = ">=3.11"
 dependencies = [
+    "aiosqlite>=0.22.1",
     "ddgs>=9.16.0",
     "fastapi>=0.143.1",
     "httpx>=0.28.1",
     "openai>=3.31.0",
     "pydantic-settings>=2.16.0",
+    "sqlalchemy[asyncio]>=2.1.4",
     "trafilatura>=2.3.1",
     "uvicorn[standard]>=0.54.0",
 ]

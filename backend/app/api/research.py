@@ -6,6 +6,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, Field
 
 from app.config import AgentMode, get_settings
+from app.services.store import TaskRow
 from app.services.task_manager import ResearchTask, TaskManager, TaskStatus
 
 router = APIRouter(prefix="/api/research", tags=["research"])
@@ -42,9 +43,9 @@ def get_manager(request: Request) -> TaskManager:
 Manager = Annotated[TaskManager, Depends(get_manager)]
 
 
-def get_task(task_id: str, manager: Manager) -> ResearchTask:
+async def get_task(task_id: str, manager: Manager) -> ResearchTask:
     # 放在依赖里校验：SSE 响应开始后就无法再返回 404 了
-    task = manager.get(task_id)
+    task = await manager.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     return task
@@ -53,12 +54,12 @@ def get_task(task_id: str, manager: Manager) -> ResearchTask:
 Task = Annotated[ResearchTask, Depends(get_task)]
 
 
-def _summary(task: ResearchTask) -> TaskSummary:
+def _summary(task: ResearchTask | TaskRow) -> TaskSummary:
     return TaskSummary(
         id=task.id,
         query=task.query,
-        mode=task.mode,
-        status=task.status,
+        mode=task.mode,  # type: ignore[arg-type]
+        status=task.status,  # type: ignore[arg-type]
         created_at=task.created_at,
         error=task.error,
     )
@@ -66,13 +67,13 @@ def _summary(task: ResearchTask) -> TaskSummary:
 
 @router.post("", status_code=201)
 async def create_research(body: CreateResearchRequest, manager: Manager) -> CreateResearchResponse:
-    task = manager.create(body.query.strip(), body.mode or get_settings().agent_mode)
+    task = await manager.create(body.query.strip(), body.mode or get_settings().agent_mode)
     return CreateResearchResponse(task_id=task.id)
 
 
 @router.get("")
 async def list_research(manager: Manager) -> list[TaskSummary]:
-    return [_summary(t) for t in manager.list()]
+    return [_summary(t) for t in await manager.list()]
 
 
 @router.get("/{task_id}")
