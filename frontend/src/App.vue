@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { createResearch, listResearch, subscribeEvents } from './api/research'
+import { createResearch, getResearch, listResearch, subscribeEvents } from './api/research'
 import CollapsiblePanel from './components/CollapsiblePanel.vue'
 import EventTimeline from './components/EventTimeline.vue'
 import PlanBoard from './components/PlanBoard.vue'
@@ -61,8 +61,22 @@ async function refreshTasks() {
   }
 }
 
+// 当前任务 ID 保存在 URL 的 ?task= 里：刷新后能回到同一个任务，链接也可以直接分享
+function urlTaskId(): string | null {
+  return new URLSearchParams(location.search).get('task')
+}
+
+function setUrlTaskId(id: string | null, replace = false) {
+  if (urlTaskId() === id) return
+  const url = new URL(location.href)
+  if (id) url.searchParams.set('task', id)
+  else url.searchParams.delete('task')
+  history[replace ? 'replaceState' : 'pushState'](null, '', url)
+}
+
 // 打开一个任务：从头订阅事件流。已完成的任务会回放全部历史事件
 function open(task: Pick<TaskSummary, 'id' | 'query' | 'mode' | 'status'>) {
+  setUrlTaskId(task.id)
   unsubscribe?.()
   errorMsg.value = ''
   currentId.value = task.id
@@ -98,6 +112,7 @@ async function start(query: string, mode: AgentMode) {
 }
 
 function newResearch() {
+  setUrlTaskId(null)
   unsubscribe?.()
   unsubscribe = null
   currentId.value = null
@@ -105,8 +120,34 @@ function newResearch() {
   errorMsg.value = ''
 }
 
-onMounted(refreshTasks)
-onUnmounted(() => unsubscribe?.())
+// 按 URL 恢复视图：页面加载、浏览器前进/后退时调用
+async function syncFromUrl() {
+  const id = urlTaskId()
+  if (!id) {
+    newResearch()
+    return
+  }
+  if (id === currentId.value) return
+  try {
+    open(await getResearch(id))
+  } catch (e) {
+    setUrlTaskId(null, true)
+    newResearch()
+    errorMsg.value = (e as Error).message.startsWith('404')
+      ? '任务不存在或已被删除'
+      : `加载任务失败：${(e as Error).message}`
+  }
+}
+
+onMounted(() => {
+  refreshTasks()
+  syncFromUrl()
+  window.addEventListener('popstate', syncFromUrl)
+})
+onUnmounted(() => {
+  unsubscribe?.()
+  window.removeEventListener('popstate', syncFromUrl)
+})
 </script>
 
 <template>
